@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from sqlalchemy import text
+from datetime import datetime
 import time
 
 def anime(anime_df):
@@ -47,52 +49,132 @@ def anime(anime_df):
                     if st.button(anime_row["title"], key=f"anime_{anime_row['title']}", use_container_width=True):
                         st.session_state.selected_anime = anime_row["title"]
                         st.session_state.operation = "anime_details"
+                        st.rerun()
                 except Exception as e:
                     print(f"Skipping anime {anime_row['title']}: {e}")
                     continue
 
 
-def anime_details(anime_df):
+
+def anime_details(anime_df, engine):
     title = st.session_state.get("selected_anime", None)
-    
     if not title:
         st.warning("No anime selected.")
         return
 
     data = anime_df[anime_df['title'] == title]
+    if data.empty:
+        st.error("Anime not found in local dataframe.")
+        return
 
-    st.title(f':red[{title}]')
+    # Determine anime_id:
+    anime_id = int(data['id'].iloc[0])
 
-    my_container = st.container()
+    # ------------------- DISPLAY ANIME DETAILS -------------------
+    st.title(f":red[{title}]")
 
-    with my_container:
-        col1, col2 = st.columns([1,2])
-
+    with st.container():
+        col1, col2 = st.columns([1, 2])
         with col1:
-            st.image(data['main_picture'].iloc[0], caption=data['title'].iloc[0])
-
+            if pd.notna(data['main_picture'].iloc[0]):
+                st.image(data['main_picture'].iloc[0], caption=data['title'].iloc[0])
         with col2:
-            st.markdown(f"<span style='color:#BBB8FF'>Synopsis:</span> {data['synopsis'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Status:</span> {data['status'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Aired On:</span> {data['start_date'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Rating:</span> {data['mean'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Views:</span> {data['popularity'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Genres:</span> {data['genres'].iloc[0]}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Agerating:</span> {data['agerating'].iloc[0].upper()}",unsafe_allow_html=True)
-            st.markdown(f"<span style='color:#BBB8FF'>Studio:</span> {data['studios'].iloc[0]}",unsafe_allow_html=True)
-    
-    st.write(":red[Would you like the rate this anime, please star based on your experience.]")
+            st.markdown(f"<span style='color:#BBB8FF'>Synopsis:</span> {data['synopsis'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Status:</span> {data['status'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Aired On:</span> {data['start_date'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Rating:</span> {data['mean'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Views:</span> {data['popularity'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Genres:</span> {data['genres'].iloc[0]}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Agerating:</span> {str(data['agerating'].iloc[0]).upper()}", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:#BBB8FF'>Studio:</span> {data['studios'].iloc[0]}", unsafe_allow_html=True)
 
-    feedback_mapping = [1,2,3,4,5]
-    selected = st.feedback("stars")
-    if selected is not None:
-        st.markdown(f"You selected {feedback_mapping[selected]} star(s).")
-        st.toast("Your feedback was saved!", icon="🔥")
+    st.divider()
 
-        
-        
+    # ------------------- FEEDBACK FORM (only for logged-in users) -------------------
+    if st.session_state.get("logged_in", False):
+        st.subheader("⭐ Rate and Review this Anime")
 
+        with st.form("feedback_form", clear_on_submit=True):
+            rating = st.slider("Your Rating", 1, 10, 8)
+            review_content = st.text_area("Your Review (no spoilers please)")
+            spoiler_flag = st.checkbox("Contains Spoilers?")
+            submit = st.form_submit_button("Submit Feedback")
 
-    
+        if submit:
+            if not review_content.strip():
+                st.warning("Please write your review before submitting.")
+            else:
+                auto_title = f"Review for {title}"
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text("""
+                                INSERT INTO feedback_table
+                                (rating, userid, entitytype, entityid, reviewtitle, reviewcontent, spoilerflag, reviewdate, moderatedstatus)
+                                VALUES (:rating, :userid, 'Anime', :entityid, :reviewtitle, :reviewcontent, :spoilerflag, :reviewdate, 'Pending')
+                            """),
+                            {
+                                "rating": int(rating),
+                                "userid": int(st.session_state.user_id),
+                                "entityid": int(anime_id),
+                                "reviewtitle": auto_title,
+                                "reviewcontent": review_content.strip(),
+                                "spoilerflag": bool(spoiler_flag),
+                                "reviewdate": datetime.now()
+                            }
+                        )
+                    st.success("✅ Feedback submitted! It will be visible once approved.")
+                    st.toast("Your feedback was saved!", icon="🔥")
+                    time.sleep(2)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error saving feedback: {e}")
+    else:
+        st.info("🔒 Please log in to submit feedback or comment.")
 
+    st.divider()
 
+    # ------------------- DISPLAY EXISTING (APPROVED) FEEDBACK -------------------
+    st.subheader("💬 Community Feedback")
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT f.reviewtitle, f.reviewcontent, f.rating, f.reviewdate, u.username
+                    FROM feedback_table f
+                    JOIN users u ON f.userid = u.id
+                    WHERE f.entitytype = 'Anime'
+                      AND f.entityid = :entityid
+                      AND f.moderatedstatus = 'Approved'
+                    ORDER BY f.reviewdate DESC
+                """),
+                {"entityid": anime_id}
+            ).fetchall()
+
+        if rows:
+            for row in rows:
+                # Access mapping safely
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    rtitle = mapping.get('reviewtitle')
+                    rcontent = mapping.get('reviewcontent')
+                    rrating = mapping.get('rating')
+                    rdate = mapping.get('reviewdate')
+                    rauthor = mapping.get('username')
+                else:
+                    rtitle = row['reviewtitle']
+                    rcontent = row['reviewcontent']
+                    rrating = row['rating']
+                    rdate = row['reviewdate']
+                    rauthor = row['username']
+
+                st.markdown(f"{rtitle}  — {rrating}/10")
+                # spoiler handling could be added here
+                st.write(rcontent)
+                st.caption(f"— by {rauthor} on {rdate.strftime('%b %d, %Y')}")
+                st.divider()
+        else:
+            st.info("No approved feedback yet. Be the first to review this anime!")
+
+    except Exception as e:
+        st.error(f"Error loading feedback: {e}")
