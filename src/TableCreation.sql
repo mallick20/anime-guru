@@ -20,7 +20,7 @@ CREATE TABLE manga (
 
 -- Anime Table
 CREATE TABLE anime (
-    id            INT PRIMARY KEY,                          
+    id            SERIAL PRIMARY KEY,                          
     title         VARCHAR(255) NOT NULL,                    
     main_picture  TEXT,                                      
     mean          DECIMAL(3,2) CHECK (mean >= 0 AND mean <= 10), 
@@ -31,7 +31,9 @@ CREATE TABLE anime (
     num_episodes  INT CHECK (num_episodes >= 0),            
     start_date    DATE,                                     
     end_date      DATE,                                     
-    synopsis      TEXT                                      
+    synopsis      TEXT,
+    agerating     VARCHAR(50),
+    studios      TEXT                                      
 );
 
 -- User Table
