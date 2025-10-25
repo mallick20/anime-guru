@@ -2,6 +2,20 @@ from sqlalchemy import text
 from datetime import datetime
 import streamlit as st
 import pandas as pd
+from datetime import datetime
+import time
+
+# Constants for readability
+ENTITY_TYPES = {
+    "ANIME": 1,
+    "MANGA": 2
+}
+
+ACTIVITY_TYPES = {
+    "VIEWED": 1,
+    "RATED": 2,
+    "COMMENTED": 3
+}
 
 def manga(manga_df):
     st.title(":red[MANGAS]")
@@ -54,7 +68,7 @@ def manga(manga_df):
 
 
 
-def manga_details(manga_df, engine):
+def manga_details(manga_df, engine, log_user_activity):
     title = st.session_state.get("selected_manga", None)
     
     if not title:
@@ -70,16 +84,14 @@ def manga_details(manga_df, engine):
     manga_id = int(data['id'].iloc[0])
 
     # ------------------- Display Manga Details -------------------
-    st.title(f':red[{title}]')
+    st.title(f":red[{title}]")
     my_container = st.container()
 
     with my_container:
         col1, col2 = st.columns([1,2])
-
         with col1:
             if pd.notna(data['main_picture'].iloc[0]):
                 st.image(data['main_picture'].iloc[0], caption=data['title'].iloc[0])
-
         with col2:
             st.markdown(f"<span style='color:#BBB8FF'>Synopsis:</span> {data['synopsis'].iloc[0]}", unsafe_allow_html=True)
             st.markdown(f"<span style='color:#BBB8FF'>Status:</span> {data['status'].iloc[0]}", unsafe_allow_html=True)
@@ -90,6 +102,17 @@ def manga_details(manga_df, engine):
             st.markdown(f"<span style='color:#BBB8FF'>Total Volumes:</span> {data['num_volumes'].iloc[0]}", unsafe_allow_html=True)
             st.markdown(f"<span style='color:#BBB8FF'>Authors:</span> {data['authors'].iloc[0]}", unsafe_allow_html=True)
             st.markdown(f"<span style='color:#BBB8FF'>Media Type:</span> {data['media_type'].iloc[0]}", unsafe_allow_html=True)
+
+    # ------------------- Log View Activity -------------------
+    if st.session_state.get("logged_in"):
+        log_user_activity(
+            engine,
+            st.session_state.user_id,
+            manga_id,
+            entitytype_id=2,      # 2 = Manga
+            activitytype_id=1,    # 1 = Viewed
+            content=f"Viewed details of {title}"
+        )
 
     st.divider()
 
@@ -126,8 +149,20 @@ def manga_details(manga_df, engine):
                                 "reviewdate": datetime.now()
                             }
                         )
+
+                    # log rating activity
+                    log_user_activity(
+                        engine,
+                        st.session_state.user_id,
+                        manga_id,
+                        entitytype_id=2,      # 2 = Manga
+                        activitytype_id=2,    # 2 = Rated
+                        content=f"Rated {rating}/10 for {title}"
+                    )
+
                     st.success("✅ Feedback submitted! It will be visible once approved.")
                     st.toast("Your feedback was saved!", icon="🔥")
+                    time.sleep(2)
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error saving feedback: {e}")
@@ -138,11 +173,13 @@ def manga_details(manga_df, engine):
 
     # ------------------- Display Existing Community Feedback -------------------
     st.subheader("💬 Community Feedback")
+
     try:
         with engine.connect() as conn:
             rows = conn.execute(
                 text("""
-                    SELECT f.reviewtitle, f.reviewcontent, f.rating, f.reviewdate, u.username
+                    SELECT f.reviewtitle, f.reviewcontent, f.rating, f.reviewdate, 
+                           f.spoilerflag, u.username
                     FROM feedback_table f
                     JOIN users u ON f.userid = u.id
                     WHERE f.entitytype = 'Manga'
@@ -160,11 +197,16 @@ def manga_details(manga_df, engine):
                 rcontent = mapping.get('reviewcontent') if mapping else row['reviewcontent']
                 rrating = mapping.get('rating') if mapping else row['rating']
                 rdate = mapping.get('reviewdate') if mapping else row['reviewdate']
-                rauthor = mapping.get('username') if mapping else row['username']
+                ruser = mapping.get('username') if mapping else row['username']
+                rspoiler = mapping.get('spoilerflag') if mapping else row['spoilerflag']
 
-                st.markdown(f"{rtitle} — {rrating}/10")
-                st.write(rcontent)
-                st.caption(f"— by {rauthor} on {rdate.strftime('%b %d, %Y')}")
+                st.markdown(f"**{rtitle}** — ⭐ {rrating}/10")
+                if rspoiler:
+                    with st.expander("⚠️ Spoiler — click to reveal"):
+                        st.write(rcontent)
+                else:
+                    st.write(rcontent)
+                st.caption(f"— by {ruser} on {rdate.strftime('%b %d, %Y')}")
                 st.divider()
         else:
             st.info("No approved feedback yet. Be the first to review this manga!")

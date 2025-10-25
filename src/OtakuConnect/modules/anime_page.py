@@ -4,6 +4,19 @@ from sqlalchemy import text
 from datetime import datetime
 import time
 
+# Constants for readability
+ENTITY_TYPES = {
+    "ANIME": 1,
+    "MANGA": 2
+}
+
+ACTIVITY_TYPES = {
+    "VIEWED": 1,
+    "RATED": 2,
+    "COMMENTED": 3
+}
+
+
 def anime(anime_df):
     st.title(":red[ANIMES]")
     st.write("One Stop Destination To All Your Favourite Animes")
@@ -56,7 +69,7 @@ def anime(anime_df):
 
 
 
-def anime_details(anime_df, engine):
+def anime_details(anime_df, engine, log_user_activity):
     title = st.session_state.get("selected_anime", None)
     if not title:
         st.warning("No anime selected.")
@@ -67,10 +80,9 @@ def anime_details(anime_df, engine):
         st.error("Anime not found in local dataframe.")
         return
 
-    # Determine anime_id:
     anime_id = int(data['id'].iloc[0])
 
-    # ------------------- DISPLAY ANIME DETAILS -------------------
+    # --- Display Anime Details ---
     st.title(f":red[{title}]")
 
     with st.container():
@@ -88,9 +100,21 @@ def anime_details(anime_df, engine):
             st.markdown(f"<span style='color:#BBB8FF'>Agerating:</span> {str(data['agerating'].iloc[0]).upper()}", unsafe_allow_html=True)
             st.markdown(f"<span style='color:#BBB8FF'>Studio:</span> {data['studios'].iloc[0]}", unsafe_allow_html=True)
 
+    # --- Log "Viewed" Activity Once Per Session ---
+    if st.session_state.get("logged_in") and not st.session_state.get("view_logged", False):
+        log_user_activity(
+            engine,
+            st.session_state.user_id,
+            anime_id,
+            ENTITY_TYPES["ANIME"],
+            ACTIVITY_TYPES["VIEWED"],
+            f"Viewed details of {title}"
+        )
+        st.session_state.view_logged = True
+
     st.divider()
 
-    # ------------------- FEEDBACK FORM (only for logged-in users) -------------------
+    # --- Feedback Form (for logged-in users) ---
     if st.session_state.get("logged_in", False):
         st.subheader("⭐ Rate and Review this Anime")
 
@@ -123,6 +147,17 @@ def anime_details(anime_df, engine):
                                 "reviewdate": datetime.now()
                             }
                         )
+
+                        # Log user rating activity
+                        log_user_activity(
+                            engine,
+                            st.session_state.user_id,
+                            anime_id,
+                            ENTITY_TYPES["ANIME"],
+                            ACTIVITY_TYPES["RATED"],
+                            f"Rated {rating}/10 for {title}"
+                        )
+
                     st.success("✅ Feedback submitted! It will be visible once approved.")
                     st.toast("Your feedback was saved!", icon="🔥")
                     time.sleep(2)
@@ -134,43 +169,51 @@ def anime_details(anime_df, engine):
 
     st.divider()
 
-    # ------------------- DISPLAY EXISTING (APPROVED) FEEDBACK -------------------
+    # --- Display Approved Community Feedback ---
     st.subheader("💬 Community Feedback")
     try:
         with engine.connect() as conn:
             rows = conn.execute(
                 text("""
-                    SELECT f.reviewtitle, f.reviewcontent, f.rating, f.reviewdate, u.username
+                    SELECT f.reviewtitle, f.reviewcontent, f.rating, f.reviewdate, f.spoilerflag, u.username
                     FROM feedback_table f
                     JOIN users u ON f.userid = u.id
                     WHERE f.entitytype = 'Anime'
-                      AND f.entityid = :entityid
-                      AND f.moderatedstatus = 'Approved'
+                    AND f.entityid = :entityid
+                    AND f.moderatedstatus = 'Approved'
                     ORDER BY f.reviewdate DESC
                 """),
                 {"entityid": anime_id}
             ).fetchall()
 
         if rows:
+            st.caption(f"📢 {len(rows)} approved community review(s) for this anime.")
             for row in rows:
-                # Access mapping safely
                 mapping = getattr(row, "_mapping", None)
                 if mapping:
-                    rtitle = mapping.get('reviewtitle')
-                    rcontent = mapping.get('reviewcontent')
-                    rrating = mapping.get('rating')
-                    rdate = mapping.get('reviewdate')
-                    rauthor = mapping.get('username')
+                    rtitle = mapping.get("reviewtitle")
+                    rcontent = mapping.get("reviewcontent")
+                    rrating = mapping.get("rating")
+                    rdate = mapping.get("reviewdate")
+                    rauthor = mapping.get("username")
+                    spoilerflag = mapping.get("spoilerflag")
                 else:
-                    rtitle = row['reviewtitle']
-                    rcontent = row['reviewcontent']
-                    rrating = row['rating']
-                    rdate = row['reviewdate']
-                    rauthor = row['username']
+                    rtitle = row["reviewtitle"]
+                    rcontent = row["reviewcontent"]
+                    rrating = row["rating"]
+                    rdate = row["reviewdate"]
+                    rauthor = row["username"]
+                    spoilerflag = row["spoilerflag"]
 
-                st.markdown(f"{rtitle}  — {rrating}/10")
-                # spoiler handling could be added here
-                st.write(rcontent)
+                st.markdown(f"### {rtitle} — ⭐ {rrating}/10")
+
+                # 👇 spoiler-aware rendering
+                if spoilerflag:
+                    with st.expander("⚠️ Spoiler Review — Click to Reveal"):
+                        st.write(rcontent)
+                else:
+                    st.write(rcontent)
+
                 st.caption(f"— by {rauthor} on {rdate.strftime('%b %d, %Y')}")
                 st.divider()
         else:

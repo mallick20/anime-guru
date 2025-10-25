@@ -8,7 +8,9 @@ from modules.manga_page import manga, manga_details
 from modules.community_page import community
 from modules.recommender_page import recommender
 from modules.auth_page import signup, login
+from modules.user_log import log_user_activity
 from db_utils import get_connection, load_table_as_df 
+
 
 
 if __name__ == '__main__':
@@ -227,13 +229,13 @@ if __name__ == '__main__':
         anime(anime_df)
 
     elif st.session_state.operation == 'anime_details':
-        anime_details(anime_df, engine)
+        anime_details(anime_df, engine, log_user_activity)
 
     elif st.session_state.operation == 'manga':
         manga(manga_df)
 
     elif st.session_state.operation == 'manga_details':
-        manga_details(manga_df, engine)
+        manga_details(manga_df, engine, log_user_activity)
 
     elif st.session_state.operation == 'community':
         community()
