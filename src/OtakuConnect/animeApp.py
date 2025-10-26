@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import pandas as pd
+import os
 
 #Import modules
 from modules.anime_page import anime, anime_details
@@ -9,6 +10,7 @@ from modules.community_page import community
 from modules.recommender_page import recommender
 from modules.auth_page import signup, login
 from db_utils import get_connection, load_table_as_df 
+from modules.config import username, password, host, port, db_name
 
 
 if __name__ == '__main__':
@@ -22,7 +24,7 @@ if __name__ == '__main__':
 
 
     #opening connection to dp
-    engine = get_connection('postgres', 'Rutgers123', 'localhost', 5401, 'OtakuConnectDB')
+    engine = get_connection(username, password, host, port, db_name)
 
     #anime data
     anime_df = load_table_as_df(engine, 'anime')
