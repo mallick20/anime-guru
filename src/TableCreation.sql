@@ -99,3 +99,22 @@ CREATE TABLE User_Activity_History (
 ALTER TABLE user_activity_history
 ADD COLUMN ActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+CREATE Table discussion_threads(
+    id SERIAL NOT NULL,
+    userid INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+);
+
+CREATE TABLE discussion_replies(
+    id SERIAL NOT NULL,
+    threadid INTEGER NOT NULL,
+    userid INTEGER NOT NULL,
+    reply TEXT,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN key(threadid) REFERENCES discussion_threads(id),
+    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+);
+
