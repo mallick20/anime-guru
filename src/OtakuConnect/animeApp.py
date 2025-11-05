@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import pandas as pd
+from sqlalchemy import text
 
 #Import modules
 from modules.anime_page import anime, anime_details
@@ -10,6 +11,7 @@ from modules.recommender_page import recommender
 from modules.auth_page import signup, login
 from modules.user_log import log_user_activity
 from db_utils import get_connection, load_table_as_df 
+from modules.admin_page import admin_panel
 
 
 
@@ -24,7 +26,7 @@ if __name__ == '__main__':
 
 
     #opening connection to dp
-    engine = get_connection('postgres', 'Rutgers123', 'localhost', 5401, 'OtakuConnectDB')
+    engine = get_connection('postgres', 'Cookie123', 'localhost', 5401, 'OtakuConnectDB')
 
     #anime data
     anime_df = load_table_as_df(engine, 'anime')
@@ -64,6 +66,10 @@ if __name__ == '__main__':
         else:
             st.title(':red[OtakuConnect] 🚀')
             st.subheader(f':red[Hi] {st.session_state.username} 🤩')
+            
+            with engine.begin() as conn:
+                user = conn.execute(text("SELECT * FROM users WHERE username=:u"), {"u": st.session_state.username}).fetchone()
+                st.session_state.role_id = user.roleid 
             if st.button("Home 🏠", type='primary', use_container_width=True):
                 st.session_state.operation = "home"
 
@@ -78,6 +84,10 @@ if __name__ == '__main__':
 
             if st.button("Shuffle for Me 🕵️‍♀️", type='primary', use_container_width=True):
                 st.session_state.operation = "recommender"
+
+            if st.session_state.role_id in ['2', '3']:  # 1 = normal user, 2 = admin, 3 = superuser
+                if st.button("Admin Dashboard ⚙️", type='primary', use_container_width=True):
+                    st.session_state.operation = "admin_panel"
 
             if st.button("Logout", use_container_width=True):
                 st.session_state.logged_in = False
@@ -248,7 +258,10 @@ if __name__ == '__main__':
             if st.button("Login Now"):
                 st.session_state.operation = "login"
                 st.rerun()
-
+                
+    elif st.session_state.operation == "admin_panel":
+        admin_panel(engine)
+        
     elif st.session_state.operation == 'login':
         login(engine)
 
