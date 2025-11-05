@@ -20,6 +20,32 @@ ACTIVITY_TYPES = {
 def anime(anime_df):
     st.title(":red[ANIMES]")
     st.write("One Stop Destination To All Your Favourite Animes")
+    items_per_row = 3
+    
+    search_term = st.text_input("Search Anime by Name").strip()
+    if search_term:
+        st.subheader(f"🔍 Search Results for '{search_term}'")
+        search_anime = anime_df[anime_df['title'].str.contains(search_term, case=False, na=False)]
+
+        if search_anime.empty:
+            st.info("No matching Anime found.")
+        else:
+            if not search_anime.empty:
+                st.markdown("### 🎬 Matching Animes")
+                for i in range(0, len(search_anime), items_per_row):
+                    row = search_anime.iloc[i:i + items_per_row]
+                    cols = st.columns(items_per_row)
+                    for col, (_, anime_row) in zip(cols, row.iterrows()):
+                        with col:
+                            if pd.notna(anime_row["main_picture"]) and str(anime_row["main_picture"]).strip():
+                                st.markdown(
+                                    f'<img class="anime-img" src="{anime_row["main_picture"]}" alt="{anime_row["title"]}">',
+                                    unsafe_allow_html=True
+                                )
+                            if st.button(anime_row["title"], key=f"anime_search_{anime_row['title']}", use_container_width=True):
+                                st.session_state.selected_anime = anime_row["title"]
+                                st.session_state.operation = "anime_details"
+                                st.rerun()
 
     st.markdown("""
         <style>
@@ -46,7 +72,7 @@ def anime(anime_df):
         """, unsafe_allow_html=True)
 
         # --- Display Latest Animes ---
-    items_per_row = 3
+    
 
     for i in range(0, len(anime_df), items_per_row):
         row = anime_df.iloc[i:i + items_per_row]
@@ -85,7 +111,9 @@ def anime_details(anime_df, engine, log_user_activity):
     # --- Display Anime Details ---
     st.title(f":red[{title}]")
 
-    with st.container():
+    my_container = st.container()
+
+    with my_container:
         col1, col2 = st.columns([1, 2])
         with col1:
             if pd.notna(data['main_picture'].iloc[0]):
@@ -101,7 +129,7 @@ def anime_details(anime_df, engine, log_user_activity):
             st.markdown(f"<span style='color:#BBB8FF'>Studio:</span> {data['studios'].iloc[0]}", unsafe_allow_html=True)
 
     # --- Log "Viewed" Activity Once Per Session ---
-    if st.session_state.get("logged_in") and not st.session_state.get("view_logged", False):
+    if st.session_state.get("logged_in"):
         log_user_activity(
             engine,
             st.session_state.user_id,
