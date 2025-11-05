@@ -21,7 +21,34 @@ def manga(manga_df):
     st.title(":red[MANGAS]")
 
     st.write("One Stop Destination To All Your Favourite Mangas")
-    
+    items_per_row = 3
+
+    search_term = st.text_input("Search Manga by Name").strip()
+    if search_term:
+        st.subheader(f"🔍 Search Results for '{search_term}'")
+        search_manga = manga_df[manga_df['title'].str.contains(search_term, case=False, na=False)]
+
+        if search_manga.empty:
+            st.info("No matching manga found.")
+        else:
+            if not search_manga.empty:
+                st.markdown("### 📖 Matching Mangas")
+                for i in range(0, len(search_manga), items_per_row):
+                    row = search_manga.iloc[i:i + items_per_row]
+                    cols = st.columns(items_per_row)
+                    for col, (_, manga_row) in zip(cols, row.iterrows()):
+                        with col:
+                            if pd.notna(manga_row["main_picture"]) and str(manga_row["main_picture"]).strip():
+                                st.markdown(
+                                    f'<img class="manga-img" src="{manga_row["main_picture"]}" alt="{manga_row["title"]}">',
+                                    unsafe_allow_html=True
+                                )
+                            if st.button(manga_row["title"], key=f"manga_search_{manga_row['title']}", use_container_width=True):
+                                st.session_state.selected_manga = manga_row["title"]
+                                st.session_state.operation = "manga_details"
+                                st.rerun()
+
+
     st.markdown("""
         <style>
         .anime-img, .manga-img {
@@ -46,7 +73,7 @@ def manga(manga_df):
         </style>
         """, unsafe_allow_html=True)
     
-    items_per_row = 3
+    
     for i in range(0, len(manga_df), items_per_row):
             row = manga_df.iloc[i:i + items_per_row]
             cols = st.columns(items_per_row)
