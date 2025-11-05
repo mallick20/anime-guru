@@ -10,6 +10,7 @@ from modules.community_page import community
 from modules.recommender_page import recommender
 from modules.auth_page import signup, login
 from modules.user_log import log_user_activity
+from modules.user_profile import profile
 from db_utils import get_connection, load_table_as_df 
 from modules.admin_page import admin_panel
 
@@ -48,10 +49,10 @@ if __name__ == '__main__':
     st.set_page_config(page_title="OtakuConnect", page_icon="images/anime_background.jpeg") # For browser tab icon
 
     with st.sidebar:
-        image = Image.open("images/anime_background.jpeg")
-        st.image(image, use_column_width=True)
 
         if not st.session_state.logged_in:
+            image = Image.open("images/anime_background.jpeg")
+            st.image(image, use_column_width=True)
             st.title(':red[Welcome to OtakuConnect] 🚀')
             if st.button("Home 🏠", type='primary', use_container_width=True):
                 st.session_state.operation = "home"
@@ -64,6 +65,32 @@ if __name__ == '__main__':
                 st.session_state.operation = "signup"
 
         else:
+            # Get user info
+            user_info = user_df[user_df["username"] == st.session_state.username].iloc[0]
+            avatar_path = user_info.get("avatar_path", "images/default.png")
+
+            # --- User profile card ---
+            with st.container(border=True):
+                st.image(avatar_path)
+
+                st.markdown(
+                        f"<p style='text-align:center; font-weight:bold;'>{user_info.username}</p>",
+                        unsafe_allow_html=True
+                    )
+                            
+                if st.button("Profile", use_container_width=True):
+                    st.session_state.operation = "edit_profile"
+                    st.rerun()
+
+                if st.button("Logout", use_container_width=True):
+                    st.session_state.logged_in = False
+                    st.session_state.user_id = None
+                    st.session_state.username = None
+                    st.session_state.operation = "home"
+                    st.rerun()
+                    
+            # --- Navigation Buttons ---
+            st.write(" ")
             st.title(':red[OtakuConnect] 🚀')
             st.subheader(f':red[Hi] {st.session_state.username} 🤩')
             
@@ -72,16 +99,12 @@ if __name__ == '__main__':
                 st.session_state.role_id = user.roleid 
             if st.button("Home 🏠", type='primary', use_container_width=True):
                 st.session_state.operation = "home"
-
             if st.button("Anime 🎬", type='primary', use_container_width=True):
                 st.session_state.operation = "anime"
-
             if st.button("Manga 📖", type='primary', use_container_width=True):
                 st.session_state.operation = "manga"
-
             if st.button("Community 👫", type='primary', use_container_width=True):
                 st.session_state.operation = "community"
-
             if st.button("Shuffle for Me 🕵️‍♀️", type='primary', use_container_width=True):
                 st.session_state.operation = "recommender"
 
@@ -248,7 +271,7 @@ if __name__ == '__main__':
         manga_details(manga_df, engine, log_user_activity)
 
     elif st.session_state.operation == 'community':
-        community()
+        community(user_df, engine)
 
     elif st.session_state.operation == 'recommender':
         if st.session_state.logged_in:
@@ -267,6 +290,10 @@ if __name__ == '__main__':
 
     elif st.session_state.operation == 'signup':
         signup(engine, user_df, genres_list)
+
+    elif st.session_state.operation == 'edit_profile':
+        profile(user_df, engine)
+
 
 
     

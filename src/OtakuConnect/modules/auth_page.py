@@ -2,12 +2,22 @@ import streamlit as st
 import bcrypt
 from datetime import date
 from sqlalchemy import text
+import os
 import time
 import re
 
 def signup(engine, user_df, genres_list):
     st.title("📝 :blue[Sign Up for OtakuConnect]")
 
+    # ✅ Load avatars
+    import os
+    avatar_folder = "images/avatars"
+    avatar_files = [f"{avatar_folder}/{file}" for file in os.listdir(avatar_folder) if file.endswith(("png","jpg","jpeg"))]
+
+    if "selected_avatar" not in st.session_state:
+        st.session_state.selected_avatar = avatar_files[0] if avatar_files else None
+
+    # ------------------ FORM START ------------------
     with st.form('sign_up'):
         FirstName = st.text_input("First Name")
         LastName = st.text_input("Last Name")
@@ -22,74 +32,85 @@ def signup(engine, user_df, genres_list):
         Password = st.text_input("Password", type="password")
         Confirm_password = st.text_input("Confirm Password", type="password")
 
-        # 🌸 New: Favorite Genre Selector
+        # 🌸 Favorite Genres
         st.markdown("### 💖 Choose Your Top 5 Favorite Genres")
         fav_genres = st.multiselect(
-            "Pick up to 5 genres you love most:",
+            "Pick up to 5 genres:",
             genres_list,
             max_selections=5
         )
 
-        submit_button = st.form_submit_button("Sign Up", type='primary')
+        st.markdown("Select your avatar given below before signing in!!")
 
+        # ✅ Submit Button INSIDE form
+        submit_button = st.form_submit_button("Sign Up ✅")
+
+    # ------------------ FORM END ------------------
+
+    # 🎭 Avatar Section (OUTSIDE form!)
+    st.markdown("### 👤 Choose Your Avatar")
+
+    cols = st.columns(5)
+    for idx, avatar in enumerate(avatar_files):
+        with cols[idx % 5]:
+            if st.button("Select", type="primary", key=avatar):
+                st.session_state.selected_avatar = avatar
+            st.image(avatar)
+
+    # Show selected avatar
+    st.write("✅ Selected Avatar:")
+    st.image(st.session_state.selected_avatar, width=120)
+
+    # ------------------ PROCESS SUBMIT ------------------
     if submit_button:
-        # ✅ Validation Checks
-        if not FirstName or not LastName or not UserName or not Email or not Dob or not Password or not Confirm_password:
-            st.warning('Please fill all the fields before submitting.')
-            return
-
-        if UserName in list(user_df['username']):
-            st.warning("Username already exists, please choose another!")
-            return
-
-        if Email in list(user_df['email']):
-            st.warning("Email already registered, please log in instead.")
-            return
-
-        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', Email):
-            st.warning("Please enter a valid email address.")
+        if not FirstName or not LastName or not UserName or not Email or not Password or not Confirm_password:
+            st.warning("Please fill all fields.")
             return
 
         if Password != Confirm_password:
-            st.warning('Passwords do not match.')
+            st.warning("Passwords do not match.")
             return
 
-        if not fav_genres or len(fav_genres) == 0:
-            st.warning("Please select at least one favorite genre.")
+        if UserName in user_df['username'].tolist():
+            st.warning("Username already exists.")
             return
 
-        if len(fav_genres) > 5:
-            st.warning("You can only select up to 5 genres.")
+        if Email in user_df['email'].tolist():
+            st.warning("Email already registered.")
             return
 
-        # ✅ Convert list to a single string
+        if not fav_genres:
+            st.warning("Pick at least 1 genre.")
+            return
+
+        # Convert genres
         fav_genres_str = ", ".join(fav_genres)
 
-        # ✅ Hash password
         hashed_pw = bcrypt.hashpw(Password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        # ✅ Insert safely
         try:
             with engine.begin() as conn:
                 conn.execute(
                     text("""
                         INSERT INTO users 
-                            (firstname, lastname, username, email, dob, password, favoritegenres, accountcreateddate)
+                        (firstname, lastname, username, email, dob, password, favoritegenres, avatar_path, accountcreateddate)
                         VALUES 
-                            (:fname, :lname, :uname, :email, :dob, :pw, :favgenres, NOW())
+                        (:fname, :lname, :uname, :email, :dob, :pw, :genres, :avatar, NOW())
                     """),
                     {
-                        "fname": FirstName.strip(),
-                        "lname": LastName.strip(),
-                        "uname": UserName.strip(),
+                        "fname": FirstName,
+                        "lname": LastName,
+                        "uname": UserName,
                         "email": Email.lower().strip(),
                         "dob": Dob,
                         "pw": hashed_pw,
-                        "favgenres": fav_genres_str
+                        "genres": fav_genres_str,
+                        "avatar": st.session_state.selected_avatar
                     }
                 )
 
-            st.success("✅ Account created successfully! Redirecting you to login page...")
+            st.success("✅ Account created successfully!")
+            st.toast("Redirecting to login page..")
             time.sleep(2)
             st.session_state.operation = "login"
             st.rerun()
