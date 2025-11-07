@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
 
     #opening connection to dp
-    engine = get_connection('postgres', 'Cookie123', 'localhost', 5401, 'OtakuConnectDB')
+    engine = get_connection('postgres', 'Rutgers123', 'localhost', 5401, 'OtakuConnectDB')
 
     #anime data
     anime_df = load_table_as_df(engine, 'anime')
@@ -92,7 +92,6 @@ if __name__ == '__main__':
             # --- Navigation Buttons ---
             st.write(" ")
             st.title(':red[OtakuConnect] 🚀')
-            st.subheader(f':red[Hi] {st.session_state.username} 🤩')
             
             with engine.begin() as conn:
                 user = conn.execute(text("SELECT * FROM users WHERE username=:u"), {"u": st.session_state.username}).fetchone()
@@ -111,13 +110,6 @@ if __name__ == '__main__':
             if st.session_state.role_id in ['2', '3']:  # 1 = normal user, 2 = admin, 3 = superuser
                 if st.button("Admin Dashboard ⚙️", type='primary', use_container_width=True):
                     st.session_state.operation = "admin_panel"
-
-            if st.button("Logout", use_container_width=True):
-                st.session_state.logged_in = False
-                st.session_state.user_id = None
-                st.session_state.username = None
-                st.session_state.operation = "home"
-                st.rerun()
 
 
     
