@@ -22,7 +22,7 @@ def profile(user_df, engine):
 
     # Load user info
     user_info = user_df[user_df["username"] == st.session_state.username].iloc[0]
-    current_avatar = user_info.get("avatar_path", "images/avatars/default.png")
+    current_avatar = user_info.get("avatar_path", "images/default.png")
 
     # Avatar list
     avatar_folder = "images/avatars"
@@ -34,9 +34,9 @@ def profile(user_df, engine):
 
     # Avatar preview
     st.image(user_info["avatar_path"], width=250)
-    st.markdown(f"### 👋 Welcome back, **{user_info['firstname']} {user_info['lastname']}!**")
 
     st.write(f"**:violet[Username]:** {user_info['username']}")
+    st.write(f"**:violet[Name]:** {user_info['firstname']} {user_info['lastname']}")
     st.write(f"**:violet[Email]:** {user_info['email']}")
     st.write(f"**:violet[Favorite Genres]:** {user_info['favoritegenres']}")
     st.write(f"**:violet[Account Created]:** {user_info['accountcreateddate']}")

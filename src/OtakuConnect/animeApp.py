@@ -8,7 +8,7 @@ from modules.anime_page import anime, anime_details
 from modules.manga_page import manga, manga_details
 from modules.community_page import community
 from modules.recommender_page import recommender
-from modules.auth_page import signup, login
+from modules.auth_page import signup, login, reset_password, forgot_password
 from modules.user_log import log_user_activity
 from modules.user_profile import profile
 from db_utils import get_connection, load_table_as_df 
@@ -285,6 +285,13 @@ if __name__ == '__main__':
 
     elif st.session_state.operation == 'edit_profile':
         profile(user_df, engine)
+
+    elif st.session_state.operation == "forgot_password":
+        forgot_password(engine)
+
+    elif st.session_state.operation == "reset_password":
+        reset_password(engine)
+
 
 
 
