@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import pandas as pd
+import streamlit.components.v1 as components
 from sqlalchemy import text
 
 #Import modules
@@ -14,6 +15,81 @@ from modules.user_profile import profile
 from db_utils import get_connection, load_table_as_df 
 from modules.admin_page import admin_panel
 
+
+def create_carousel_html(items, title_field="title", img_field="main_picture", badge_field=None, badge_prefix="⭐"):
+    html = """
+    <style>
+    .carousel-container {
+        display: flex;
+        overflow-x: auto;
+        gap: 14px;
+        padding: 10px;
+        scroll-behavior: smooth;
+    }
+    .carousel-container::-webkit-scrollbar {
+        height: 8px;
+    }
+    .carousel-container::-webkit-scrollbar-thumb {
+        background-color: #666;
+        border-radius: 10px;
+    }
+    .carousel-item {
+        flex: 0 0 auto;
+        width: 200px;
+        height: 280px;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+        transition: transform 0.25s ease;
+    }
+    .carousel-item:hover {
+        transform: scale(1.05);
+    }
+    .carousel-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .carousel-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 8px;
+        background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.7));
+        color: #fff;
+        font-size: 14px;
+        text-align: center;
+    }
+    .rating-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(0,0,0,0.7);
+        color: #ffd700;
+        padding: 3px 8px;
+        border-radius: 8px;
+        font-size: 15px;
+    }
+    </style>
+    <div class="carousel-container">
+    """
+    for _, row in items.iterrows():
+        img = row[img_field]
+        title = str(row[title_field]).replace('"', '&quot;')
+        badge = ""
+        if badge_field and not pd.isna(row.get(badge_field)):
+            badge = f'<div class="rating-badge">{badge_prefix} {row[badge_field]}</div>'
+        html += f"""
+        <div class="carousel-item">
+            <img src="{img}" alt="{title}">
+            {badge}
+            <div class="carousel-caption">{title}</div>
+        </div>
+        """
+    html += "</div>"
+    return html
 
 
 if __name__ == '__main__':
@@ -128,7 +204,7 @@ if __name__ == '__main__':
         manga_df['start_date'] = pd.to_datetime(manga_df['start_date'], errors='coerce')
         today = pd.Timestamp.today()
 
-        # --- Shared CSS for uniform look ---
+        # --- Latest Animes Panel -----------------------------------------
         st.markdown("""
         <style>
         .anime-img, .manga-img {
@@ -202,19 +278,24 @@ if __name__ == '__main__':
 
         # --- Otherwise, show latest releases ---
         else:
+            with st.container(border=True):
+                # --- Top Rated ---
+                top_rated_anime = anime_df.sort_values(by='mean', ascending=False).head(20)
+                st.markdown("### 🔥 :red[Top Rated Animes]")
+                components.html(create_carousel_html(top_rated_anime, badge_field="mean"), height=300, scrolling=False)
+                
+                # --- Most Viewed Animes ---
+                most_viewed_anime = anime_df.sort_values(by='popularity', ascending=False).head(20)
+                st.markdown("### 👑 :red[Most Viewed Animes]")
+                components.html(create_carousel_html(most_viewed_anime, badge_field="popularity", badge_prefix="👁"), height=300, scrolling=False)
+            
+
             # Latest Anime (released within last 2 months)
             latest_anime = anime_df[
                 (anime_df['start_date'] > today - pd.DateOffset(months=2)) &
                 (anime_df['start_date'] <= today)
             ][['title', 'main_picture']].dropna(subset=['main_picture'])
             latest_anime = latest_anime[latest_anime['main_picture'].apply(lambda x: isinstance(x, str) and x.strip() != '')]
-
-            # Latest Manga (released within last 12 months)
-            latest_manga = manga_df[
-                (manga_df['start_date'] > today - pd.DateOffset(months=12)) &
-                (manga_df['start_date'] <= today)
-            ][['title', 'main_picture']].dropna(subset=['main_picture'])
-            latest_manga = latest_manga[latest_manga['main_picture'].apply(lambda x: isinstance(x, str) and x.strip() != '')]
 
             st.subheader(":red[Latest Animes]")
             for i in range(0, len(latest_anime), items_per_row):
@@ -231,6 +312,29 @@ if __name__ == '__main__':
                             st.session_state.selected_anime = anime_row["title"]
                             st.session_state.operation = "anime_details"
                             st.rerun()
+
+            st.write(" ")
+            st.divider()
+            with st.container(border=True):
+                
+                st.write(" ")
+                # --- Top Rated Mangas ---
+                top_rated_manga = manga_df.sort_values(by='mean', ascending=False).head(20)
+                st.markdown("### 📖 :red[Top Rated Mangas]")
+                components.html(create_carousel_html(top_rated_manga, badge_field="mean"), height=300, scrolling=False)
+
+                # --- Most Viewed Mangas ---
+                most_viewed_manga = manga_df.sort_values(by='popularity', ascending=False).head(20)
+                st.markdown("### 🌟 :red[Most Viewed Mangas]")
+                components.html(create_carousel_html(most_viewed_manga, badge_field="popularity", badge_prefix="👁"), height=300, scrolling=False)
+            
+
+            # Latest Manga (released within last 12 months)
+            latest_manga = manga_df[
+                (manga_df['start_date'] > today - pd.DateOffset(months=12)) &
+                (manga_df['start_date'] <= today)
+            ][['title', 'main_picture']].dropna(subset=['main_picture'])
+            latest_manga = latest_manga[latest_manga['main_picture'].apply(lambda x: isinstance(x, str) and x.strip() != '')]
 
             st.subheader(":red[Latest Mangas]")
             for i in range(0, len(latest_manga), items_per_row):

@@ -97,3 +97,49 @@ CREATE TABLE User_Activity_History (
 ALTER TABLE user_activity_history
 ADD COLUMN ActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+
+
+-- Discussion threads tables
+CREATE Table discussion_threads(
+    id SERIAL NOT NULL,
+    userid INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+);
+
+CREATE TABLE discussion_replies(
+    id SERIAL NOT NULL,
+    threadid INTEGER NOT NULL,
+    userid INTEGER NOT NULL,
+    reply TEXT,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN key(threadid) REFERENCES discussion_threads(id),
+    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+);
+
+--- user activity details
+CREATE TABLE user_activity_history(
+    id SERIAL NOT NULL,
+    userid integer NOT NULL,
+    entityid integer,
+    entitytype integer,
+    activitytype integer,
+    content text,
+    activitydate timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    CONSTRAINT user_activity_history_userid_fkey FOREIGN key(userid) REFERENCES users(id),
+    CONSTRAINT user_activity_history_entitytype_fkey FOREIGN key(entitytype) REFERENCES entity(id),
+    CONSTRAINT user_activity_history_activitytype_fkey FOREIGN key(activitytype) REFERENCES activity(id)
+);
+
+
+ALTER TABLE user_activity_history
+DROP CONSTRAINT user_activity_history_userid_fkey;
+
+ALTER TABLE user_activity_history
+ADD CONSTRAINT user_activity_history_userid_fkey
+FOREIGN KEY (userid) REFERENCES users(id)
+ON DELETE CASCADE;
+
