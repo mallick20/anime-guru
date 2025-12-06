@@ -20,35 +20,94 @@ ACTIVITY_TYPES = {
 def manga(manga_df):
     st.title(":red[MANGAS]")
 
-    st.write("One Stop Destination To All Your Favourite Mangas")
     items_per_row = 3
+    items_per_load = 15
 
-    search_term = st.text_input("Search Manga by Name").strip()
+    # Initialize visible manga count
+    if "visible_manga" not in st.session_state:
+        st.session_state.visible_manga = items_per_load
+
+    def reset_visible():
+        st.session_state.visible_manga = items_per_load
+
+    # ---- SEARCH ----
+    search_term = st.text_input("Search Manga by Name", on_change=reset_visible).strip()
+
+    # ---- FILTERS ----
+    with st.expander("🔎 Apply Filters", expanded=False):
+        col1, col2 = st.columns(2)
+
+        sort_by = col1.selectbox(
+            "Sort By",
+            [
+                "Default",
+                "Latest",
+                "Oldest",
+                "Highest Rating",
+                "Lowest Rating",
+                "A → Z",
+                "Z → A",
+            ],
+            on_change=reset_visible
+        )
+
+        all_genres = sorted(
+            {g.strip() for sub in manga_df["genres"].dropna() for g in sub.split(",")}
+        )
+
+        selected_genres = col2.multiselect(
+            "Filter by Genre",
+            all_genres,
+            on_change=reset_visible
+        )
+
+    # ---- APPLY SEARCH ----
     if search_term:
+        manga_list = manga_df[manga_df["title"].str.contains(search_term, case=False, na=False)]
         st.subheader(f"🔍 Search Results for '{search_term}'")
-        search_manga = manga_df[manga_df['title'].str.contains(search_term, case=False, na=False)]
+    else:
+        manga_list = manga_df.copy()
 
-        if search_manga.empty:
-            st.info("No matching manga found.")
-        else:
-            if not search_manga.empty:
-                st.markdown("### 📖 Matching Mangas")
-                for i in range(0, len(search_manga), items_per_row):
-                    row = search_manga.iloc[i:i + items_per_row]
-                    cols = st.columns(items_per_row)
-                    for col, (_, manga_row) in zip(cols, row.iterrows()):
-                        with col:
-                            if pd.notna(manga_row["main_picture"]) and str(manga_row["main_picture"]).strip():
-                                st.markdown(
-                                    f'<img class="manga-img" src="{manga_row["main_picture"]}" alt="{manga_row["title"]}">',
-                                    unsafe_allow_html=True
-                                )
-                            if st.button(manga_row["title"], key=f"manga_search_{manga_row['title']}", use_container_width=True):
-                                st.session_state.selected_manga = manga_row["title"]
-                                st.session_state.operation = "manga_details"
-                                st.rerun()
+        # ✔ Apply genre filters only when NOT searching
+        if selected_genres:
+            manga_list = manga_list[
+                manga_list["genres"]
+                .fillna("")
+                .apply(lambda x: all(g in x for g in selected_genres))
+            ]
 
+    # ---- APPLY SORTING ----
+    if sort_by == "Latest" and "start_date" in manga_list.columns:
+        manga_list = manga_list.sort_values(by="start_date", ascending=False)
 
+    elif sort_by == "Oldest" and "start_date" in manga_list.columns:
+        manga_list = manga_list.sort_values(by="start_date", ascending=True)
+
+    elif sort_by == "Highest Rating" and "rating" in manga_list.columns:
+        manga_list = manga_list.sort_values(by="rating", ascending=False)
+
+    elif sort_by == "Lowest Rating":
+        if "mean" in manga_list.columns:
+            manga_list["mean_numeric"] = (
+                pd.to_numeric(manga_list["mean"], errors="coerce").fillna(0)
+            )
+            manga_list = manga_list.sort_values(by="mean_numeric", ascending=True)
+
+    elif sort_by == "A → Z":
+        manga_list = manga_list.sort_values(by="title", ascending=True)
+
+    elif sort_by == "Z → A":
+        manga_list = manga_list.sort_values(by="title", ascending=False)
+
+    # If nothing left
+    if manga_list.empty:
+        st.info("No manga match your filters or search.")
+        return
+
+    # ---- PAGINATION ----
+    visible_df = manga_list.iloc[:st.session_state.visible_manga]
+
+    # ---- CSS ----
     st.markdown("""
         <style>
         .anime-img, .manga-img {
@@ -58,40 +117,54 @@ def manga(manga_df):
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transition: transform 0.2s ease;
-            margin-bottom: 10px; /* 👈 space between image & title */
+            margin-bottom: 10px;
         }
         .anime-img:hover, .manga-img:hover {
             transform: scale(1.03);
         }
-        .anime-title, .manga-title {
-            text-align: center;
-            font-weight: 600;
-            font-size: 1rem;
-            color: #e63946;
-            margin-top: 8px;
-        }
         </style>
-        """, unsafe_allow_html=True)
-    
-    
-    for i in range(0, len(manga_df), items_per_row):
-            row = manga_df.iloc[i:i + items_per_row]
+    """, unsafe_allow_html=True)
+
+    # ---- DISPLAY ----
+    with st.container(border=True):
+        st.markdown(
+            "<h3 style='text-align: center;'>One Stop Destination To All Your Favourite Mangas</h3>",
+            unsafe_allow_html=True
+        )
+
+        for i in range(0, len(visible_df), items_per_row):
+            row = visible_df.iloc[i:i + items_per_row]
             cols = st.columns(items_per_row)
 
             for col, (_, manga_row) in zip(cols, row.iterrows()):
                 with col:
-                    try:
+
+                    # Image
+                    if pd.notna(manga_row["main_picture"]) and str(manga_row["main_picture"]).strip():
                         st.markdown(
                             f'<img class="manga-img" src="{manga_row["main_picture"]}" alt="{manga_row["title"]}">',
                             unsafe_allow_html=True
                         )
-                        if st.button(manga_row["title"],key=f"manga_{manga_row['title']}", use_container_width=True):
-                            st.session_state.selected_manga = manga_row["title"]
-                            st.session_state.operation = "manga_details"
-                            st.rerun()
-                    except Exception as e:
-                        print(f"Skipping manga {manga_row['title']}: {e}")
-                        continue
+
+                    # Button
+                    if st.button(
+                        manga_row["title"],
+                        key=f"manga_{int(manga_row['id'])}",
+                        use_container_width=True
+                    ):
+                        st.session_state.selected_manga = manga_row["title"]
+                        st.session_state.operation = "manga_details"
+                        st.rerun()
+
+        # ---- LOAD MORE ----
+        if st.session_state.visible_manga < len(manga_list):
+            st.button(
+                "⬇ Load More",
+                type="primary",
+                on_click=lambda: st.session_state.update(
+                    {"visible_manga": st.session_state.visible_manga + items_per_load}
+                )
+            )
 
 
 
@@ -112,6 +185,18 @@ def manga_details(manga_df, engine, log_user_activity):
 
     # ------------------- Display Manga Details -------------------
     st.title(f":red[{title}]")
+    if st.session_state.get('previous_operation') == 'recommender':
+        if st.button("⬅️ Back To Recommendations", type='primary'):
+            st.session_state.operation = "recommender"
+            st.session_state.previous_operation = None
+            st.rerun()
+        st.markdown("---")
+
+    else:
+        if st.button(":arrow_left: Return To Home", type='primary'):
+            st.session_state.operation = "home"
+            st.rerun()
+
     my_container = st.container()
 
     with my_container:

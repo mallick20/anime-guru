@@ -16,37 +16,97 @@ ACTIVITY_TYPES = {
     "COMMENTED": 3
 }
 
-
 def anime(anime_df):
     st.title(":red[ANIMES]")
-    st.write("One Stop Destination To All Your Favourite Animes")
+
     items_per_row = 3
-    
-    search_term = st.text_input("Search Anime by Name").strip()
+    items_per_load = 15
+
+    # Initialize visible anime count
+    if "visible_anime" not in st.session_state:
+        st.session_state.visible_anime = items_per_load
+
+    def reset_visible():
+        st.session_state.visible_anime = items_per_load
+
+    # ---- SEARCH ----
+    search_term = st.text_input("Search Anime by Name", on_change=reset_visible).strip()
+
+    # ---- FILTERS ----
+    with st.expander("🔎 Apply Filters", expanded=False):
+        col1, col2 = st.columns(2)
+
+        sort_by = col1.selectbox(
+            "Sort By",
+            [
+                "Default",
+                "Latest",
+                "Oldest",
+                "Highest Rating",
+                "Lowest Rating",
+                "A → Z",
+                "Z → A",
+            ],
+            on_change=reset_visible
+        )
+
+        all_genres = sorted(
+            {g.strip() for sub in anime_df["genres"].dropna() for g in sub.split(",")}
+        )
+
+        selected_genres = col2.multiselect(
+            "Filter by Genre",
+            all_genres,
+            on_change=reset_visible
+        )
+
+    # ---- APPLY SEARCH ----
     if search_term:
+        anime_list = anime_df[anime_df["title"].str.contains(search_term, case=False, na=False)]
         st.subheader(f"🔍 Search Results for '{search_term}'")
-        search_anime = anime_df[anime_df['title'].str.contains(search_term, case=False, na=False)]
 
-        if search_anime.empty:
-            st.info("No matching Anime found.")
-        else:
-            if not search_anime.empty:
-                st.markdown("### 🎬 Matching Animes")
-                for i in range(0, len(search_anime), items_per_row):
-                    row = search_anime.iloc[i:i + items_per_row]
-                    cols = st.columns(items_per_row)
-                    for col, (_, anime_row) in zip(cols, row.iterrows()):
-                        with col:
-                            if pd.notna(anime_row["main_picture"]) and str(anime_row["main_picture"]).strip():
-                                st.markdown(
-                                    f'<img class="anime-img" src="{anime_row["main_picture"]}" alt="{anime_row["title"]}">',
-                                    unsafe_allow_html=True
-                                )
-                            if st.button(anime_row["title"], key=f"anime_search_{anime_row['title']}", use_container_width=True):
-                                st.session_state.selected_anime = anime_row["title"]
-                                st.session_state.operation = "anime_details"
-                                st.rerun()
+    else:
+        anime_list = anime_df.copy()
 
+        if selected_genres:
+            anime_list = anime_list[
+                anime_list["genres"]
+                .fillna("")
+                .apply(lambda x: all(g in x for g in selected_genres))
+            ]
+
+    # ---- APPLY SORTING ----
+    if sort_by == "Latest" and "start_date" in anime_list.columns:
+        anime_list = anime_list.sort_values(by="start_date", ascending=False)
+
+    elif sort_by == "Oldest" and "start_date" in anime_list.columns:
+        anime_list = anime_list.sort_values(by="start_date", ascending=True)
+
+    elif sort_by == "Highest Rating" and "rating" in anime_list.columns:
+        anime_list = anime_list.sort_values(by="rating", ascending=False)
+
+    elif sort_by == "Lowest Rating":
+        if "mean" in anime_list.columns:
+            anime_list["mean_numeric"] = (
+                pd.to_numeric(anime_list["mean"], errors="coerce").fillna(0)
+            )
+            anime_list = anime_list.sort_values(by="mean_numeric", ascending=True)
+
+    elif sort_by == "A → Z":
+        anime_list = anime_list.sort_values(by="title", ascending=True)
+
+    elif sort_by == "Z → A":
+        anime_list = anime_list.sort_values(by="title", ascending=False)
+
+    # If nothing left
+    if anime_list.empty:
+        st.info("No anime match your filters or search.")
+        return
+
+    # ---- PAGINATION ----
+    visible_df = anime_list.iloc[:st.session_state.visible_anime]
+
+    # ---- CSS ----
     st.markdown("""
         <style>
         .anime-img, .manga-img {
@@ -56,42 +116,51 @@ def anime(anime_df):
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transition: transform 0.2s ease;
-            margin-bottom: 10px; /* 👈 space between image & title */
+            margin-bottom: 10px;
         }
         .anime-img:hover, .manga-img:hover {
             transform: scale(1.03);
         }
-        .anime-title, .manga-title {
-            text-align: center;
-            font-weight: 600;
-            font-size: 1rem;
-            color: #e63946;
-            margin-top: 8px;
-        }
         </style>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-        # --- Display Latest Animes ---
-    
+    # ---- DISPLAY ----
+    with st.container(border=True):
+        st.markdown("<h3 style='text-align: center;'>One Stop Destination To All Your Favourite Animes</h3>", unsafe_allow_html=True)
 
-    for i in range(0, len(anime_df), items_per_row):
-        row = anime_df.iloc[i:i + items_per_row]
-        cols = st.columns(items_per_row)
+        for i in range(0, len(visible_df), items_per_row):
+            row = visible_df.iloc[i:i + items_per_row]
+            cols = st.columns(items_per_row)
 
-        for col, (_, anime_row) in zip(cols, row.iterrows()):
-            with col:
-                try:
-                    st.markdown(
-                        f'<img class="anime-img" src="{anime_row["main_picture"]}" alt="{anime_row["title"]}">',
-                        unsafe_allow_html=True
-                    )
-                    if st.button(anime_row["title"], key=f"anime_{anime_row['title']}", use_container_width=True):
+            for col, (_, anime_row) in zip(cols, row.iterrows()):
+                with col:
+
+                    # Image
+                    if pd.notna(anime_row["main_picture"]) and str(anime_row["main_picture"]).strip():
+                        st.markdown(
+                            f'<img class="anime-img" src="{anime_row["main_picture"]}" alt="{anime_row["title"]}">',
+                            unsafe_allow_html=True
+                        )
+
+                    # Button (stable ID key)
+                    if st.button(
+                        anime_row["title"],
+                        key=f"anime_{int(anime_row['id'])}",
+                        use_container_width=True
+                    ):
                         st.session_state.selected_anime = anime_row["title"]
                         st.session_state.operation = "anime_details"
                         st.rerun()
-                except Exception as e:
-                    print(f"Skipping anime {anime_row['title']}: {e}")
-                    continue
+
+        # ---- LOAD MORE ----
+        if st.session_state.visible_anime < len(anime_list):
+            st.button(
+                "⬇ Load More",
+                type="primary",
+                on_click=lambda: st.session_state.update(
+                    {"visible_anime": st.session_state.visible_anime + items_per_load}
+                )
+            )
 
 
 
@@ -110,6 +179,17 @@ def anime_details(anime_df, engine, log_user_activity):
 
     # --- Display Anime Details ---
     st.title(f":red[{title}]")
+    if st.session_state.get('previous_operation') == 'recommender':
+        if st.button("⬅️ Back To Recommendations", type='primary'):
+            st.session_state.operation = "recommender"
+            st.session_state.previous_operation = None
+            st.rerun()
+        st.markdown("---")
+
+    else:
+        if st.button(":arrow_left: Return To Home", type='primary'):
+            st.session_state.operation = "home"
+            st.rerun()
 
     my_container = st.container()
 

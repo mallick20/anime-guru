@@ -66,6 +66,7 @@ def community(user_df, engine):
                     with st.expander(f"🧵 {title} — by {author} on {created.strftime('%b %d, %Y')}"):   
                         st.header(f":violet[{title}]")
                         # Load replies
+                        st.write(" ")
                         with engine.connect() as conn:
                             replies = conn.execute(
                                 text("""
@@ -86,7 +87,7 @@ def community(user_df, engine):
                                     f"**{rm['username']}** · _{rm['created_at'].strftime('%b %d, %Y %H:%M')}_\n"
                                     f"{rm['reply']}"
                                 )
-                                st.write("---")
+                                st.divider()
 
                         # Add a reply
                         if st.session_state.get("logged_in", False):

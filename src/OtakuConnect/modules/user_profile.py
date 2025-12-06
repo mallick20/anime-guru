@@ -1,7 +1,8 @@
 import streamlit as st
 from sqlalchemy import text
-from datetime import date
+import time
 import os
+import bcrypt
 
 def profile(user_df, engine):
     st.title("👤 Your Profile")
@@ -83,13 +84,91 @@ def profile(user_df, engine):
                     }
                 )
             st.success("✅ Profile updated successfully!")
+            time.sleep(2)
             st.rerun()
 
         except Exception as e:
             st.error(f"Error updating profile: {e}")
 
+    # ---------------- CHANGE PASSWORD ----------------
+    st.divider()
+    with st.expander("🔑 Change Password", expanded=False):
+        with st.form("change_password_form", clear_on_submit=True):
+            old_pw = st.text_input("Enter Current Password", type="password")
+            new_pw = st.text_input("Enter New Password", type="password")
+            confirm_pw = st.text_input("Confirm New Password", type="password")
+            pw_submit = st.form_submit_button("Update Password", use_container_width=True)
+
+        if pw_submit:
+            if not old_pw or not new_pw or not confirm_pw:
+                st.warning("Please fill all password fields.")
+            elif new_pw != confirm_pw:
+                st.warning("New passwords do not match.")
+            else:
+                try:
+                    with engine.connect() as conn:
+                        user_row = conn.execute(
+                            text("SELECT password FROM users WHERE id = :uid"),
+                            {"uid": st.session_state.user_id}
+                        ).fetchone()
+
+                    if user_row and bcrypt.checkpw(old_pw.encode('utf-8'), user_row[0].encode('utf-8')):
+                        new_hashed = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text("UPDATE users SET password = :pw WHERE id = :uid"),
+                                {"pw": new_hashed, "uid": st.session_state.user_id}
+                            )
+                        st.success("✅ Password updated successfully!")
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.error("❌ Incorrect current password.")
+                except Exception as e:
+                    st.error(f"Error updating password: {e}")
+
+    # ---------------- DELETE ACCOUNT ----------------
+    st.divider()
+    with st.expander("⚠️ Delete Account", expanded=False):
+        with st.form("delete_account_form"):
+            st.warning("This action is irreversible. All your data will be permanently deleted.")
+            confirm_text = st.text_input("Type DELETE to confirm")
+            del_submit = st.form_submit_button("🗑️ Delete My Account", use_container_width=True)
+
+        if del_submit:
+            if confirm_text.strip().upper() == "DELETE":
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": st.session_state.user_id})
+
+                    st.success("✅ Account deleted successfully.")
+                    st.session_state.clear()
+                    st.session_state.operation = "home"
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error deleting account: {e}")
+            else:
+                st.warning("Please type DELETE to confirm.")
+
+    # ---------------- SCROLLABLE RECENT ACTIVITY ----------------
     st.divider()
     st.subheader("📜 Recent Activity")
+
+    st.markdown(
+        """
+        <style>
+        .scroll-box {
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            border: 1px solid #666;
+            border-radius: 10px;
+            background-color: #111;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     try:
         with engine.connect() as conn:
@@ -99,16 +178,17 @@ def profile(user_df, engine):
                     FROM user_activity_history 
                     WHERE userid = :uid
                     ORDER BY activitydate DESC
-                    LIMIT 10
+                    LIMIT 25
                 """),
                 {"uid": st.session_state.user_id}
             ).fetchall()
 
         if logs:
+            activity_html = ""
             for log in logs:
-                st.write(f"➡️ **{log[0]}** — {log[1]}")
-                st.caption(f"🕒 {log[2]}")
+                activity_html += f"<p>➡️ <b>{log[0]}</b> — {log[1]}<br><span style='font-size:12px;color:#aaa;'>🕒 {log[2]}</span></p>"
+            st.markdown(f"<div class='scroll-box'>{activity_html}</div>", unsafe_allow_html=True)
         else:
-            st.info("No activity yet.")
+            st.info("No recent activity yet.")
     except Exception as e:
         st.error(f"Failed to load activity logs: {e}")

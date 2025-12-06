@@ -122,10 +122,18 @@ def signup(engine, user_df, genres_list):
 def login(engine):
     st.title("🔐 :blue[Login to OtakuConnect]")
 
+    # 🔸 Regular login form
     Email = st.text_input("Email").lower().strip()
     Password = st.text_input("Password", type="password")
 
-    if st.button("Login", use_container_width=True):
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        login_clicked = st.button("Login ✅", use_container_width=True)
+    with col2:
+        forgot_pw_clicked = st.button("Forgot Password? 🔑", use_container_width=True)
+
+    # --- Handle login ---
+    if login_clicked:
         if not Email or not Password:
             st.warning("Please fill in both fields.")
             return
@@ -140,7 +148,6 @@ def login(engine):
             st.error("Invalid email or password.")
             return
 
-        # ✅ Access row properly
         try:
             stored_hash = result._mapping['password']
             user_id = result._mapping['id']
@@ -150,10 +157,8 @@ def login(engine):
             user_id = result['id']
             username = result['username']
 
-        # ✅ Check password
         if bcrypt.checkpw(Password.encode('utf-8'), stored_hash.encode('utf-8')):
-
-            # ✅ Update last login timestamp
+            # Update last login
             try:
                 with engine.begin() as conn:
                     conn.execute(
@@ -163,13 +168,71 @@ def login(engine):
             except Exception as e:
                 st.warning(f"⚠️ Could not update last login: {e}")
 
-            # ✅ Set session variables
+            # Success
             st.session_state.logged_in = True
             st.session_state.user_id = user_id
             st.session_state.username = username
             st.success(f"Welcome back, {username}!")
             st.session_state.operation = "home"
             st.rerun()
-
         else:
             st.error("Invalid email or password.")
+
+    # --- Forgot password flow ---
+    if forgot_pw_clicked:
+        st.session_state.operation = "forgot_password"
+        st.rerun()
+
+
+def forgot_password(engine):
+    st.title("🔑 :blue[Reset Your Password]")
+
+    email = st.text_input("Enter your registered email").lower().strip()
+
+    if st.button("Verify Email", use_container_width=True):
+        if not email:
+            st.warning("Please enter your email.")
+            return
+
+        with engine.connect() as conn:
+            user = conn.execute(text("SELECT id FROM users WHERE email = :e"), {"e": email}).fetchone()
+
+        if not user:
+            st.error("No account found with that email.")
+            return
+        else:
+            st.session_state.reset_user_id = user[0]
+            st.session_state.reset_email = email
+            st.session_state.operation = "reset_password"
+            st.rerun()
+
+
+def reset_password(engine):
+    st.title("🔒 :blue[Set a New Password]")
+
+    new_pw = st.text_input("New Password", type="password")
+    confirm_pw = st.text_input("Confirm New Password", type="password")
+
+    if st.button("Update Password 🔄", use_container_width=True):
+        if not new_pw or not confirm_pw:
+            st.warning("Please fill both fields.")
+            return
+        if new_pw != confirm_pw:
+            st.warning("Passwords do not match.")
+            return
+
+        hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE users SET password = :pw WHERE id = :uid"),
+                    {"pw": hashed_pw, "uid": st.session_state.reset_user_id}
+                )
+
+            st.success("✅ Password updated successfully! Please login again.")
+            time.sleep(2)
+            st.session_state.operation = "login"
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error updating password: {e}")

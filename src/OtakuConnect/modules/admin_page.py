@@ -6,7 +6,7 @@ def admin_panel(engine):
     st.title("⚙️ Admin Dashboard")
 
     # --- Define admin tiles ---
-    options = ["Update Role", "Revoke/Restore User", "Feedback Approval"]
+    options = ["Revoke/Restore User","Update Role", "Feedback Approval"]
     if st.session_state.role_id == '3':
         options.append("View Logs")  # Superuser only
 
@@ -19,7 +19,7 @@ def admin_panel(engine):
     cols = st.columns(len(options))
     for i, option in enumerate(options):
         # Red tile styling
-        if cols[i].button(option, key=f"tile_{option}", help=f"Go to {option}"):
+        if cols[i].button(option, key=f"tile_{option}", help=f"Go to {option}", use_container_width=True):
             st.session_state.selected_admin_page = option
 
     page = st.session_state.selected_admin_page
