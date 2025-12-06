@@ -143,3 +143,52 @@ ADD CONSTRAINT user_activity_history_userid_fkey
 FOREIGN KEY (userid) REFERENCES users(id)
 ON DELETE CASCADE;
 
+-- Feedback_Table
+ALTER TABLE feedback_table
+DROP CONSTRAINT feedback_table_userid_fkey;
+
+-- User_Activity_History
+ALTER TABLE user_activity_history
+DROP CONSTRAINT user_activity_history_userid_fkey;
+
+-- Discussion Threads
+ALTER TABLE discussion_threads
+DROP CONSTRAINT user_discussion_threads_userid_fkey;
+
+-- Discussion Replies
+ALTER TABLE discussion_replies
+DROP CONSTRAINT user_discussion_replies_userid_fkey;
+
+
+-- Feedback_Table → users
+ALTER TABLE feedback_table
+ADD CONSTRAINT feedback_table_userid_fkey
+FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
+
+
+-- User Activity History → users
+ALTER TABLE user_activity_history
+ADD CONSTRAINT user_activity_history_userid_fkey
+FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
+
+
+-- Discussion Threads → users
+ALTER TABLE discussion_threads
+ADD CONSTRAINT user_discussion_threads_userid_fkey
+FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
+
+
+-- Discussion Replies → users
+ALTER TABLE discussion_replies
+ADD CONSTRAINT user_discussion_replies_userid_fkey
+FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
+
+
+ALTER TABLE discussion_replies
+DROP CONSTRAINT user_discussion_replies_threadid_fkey;
+
+ALTER TABLE discussion_replies
+ADD CONSTRAINT user_discussion_replies_threadid_fkey
+FOREIGN KEY (threadid) REFERENCES discussion_threads(id) ON DELETE CASCADE;
+
+

@@ -192,7 +192,7 @@ if __name__ == '__main__':
     if st.session_state.operation == "home":
         # 🏠 Greeting
         if st.session_state.get("logged_in") and st.session_state.get("username"):
-            st.title(f':red[Welcome back, {st.session_state.username} 👋]')
+            st.title(f':red[Welcome, {st.session_state.username} 👋]')
         else:
             st.title(":red[Hello Reader, Hajimemashite 👋]")
 
@@ -292,7 +292,7 @@ if __name__ == '__main__':
 
             # Latest Anime (released within last 2 months)
             latest_anime = anime_df[
-                (anime_df['start_date'] > today - pd.DateOffset(months=2)) &
+                (anime_df['start_date'] > today - pd.DateOffset(months=3)) &
                 (anime_df['start_date'] <= today)
             ][['title', 'main_picture']].dropna(subset=['main_picture'])
             latest_anime = latest_anime[latest_anime['main_picture'].apply(lambda x: isinstance(x, str) and x.strip() != '')]
@@ -371,7 +371,7 @@ if __name__ == '__main__':
 
     elif st.session_state.operation == 'recommender':
         if st.session_state.logged_in:
-            recommender()
+            recommender(anime_df, manga_df, engine)
         else:
             st.warning("Please log in to use Shuffle For Me.")
             if st.button("Login Now"):
