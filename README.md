@@ -1,7 +1,7 @@
 # anime-guru
 One stop solution for all your questions on which anime to watch next
 
-# Setup
+## Setup
 
 ### Clone the repo
 `git clone git@github.com:mallick20/anime-guru.git`
@@ -16,7 +16,7 @@ One stop solution for all your questions on which anime to watch next
 
 `pip install -r requirements.txt`
 
-# Collaborators
+## Collaborators
 
 
-# References
+## References

@@ -8,6 +8,9 @@ import re
 import pandas as pd
 from openai import AzureOpenAI
 
+# Import config
+from config import Config
+
 def parse_query(message):
     """Parse user message into structured JSON"""
     try:
@@ -41,9 +44,9 @@ def parse_query(message):
                 Return ONLY the JSON object, nothing else."""
         
         client = AzureOpenAI(
-            azure_endpoint=AzureOpenAIEndPOINT, 
-            api_key=AzureOpenAIKey, 
-            api_version="2024-08-01-preview",
+            azure_endpoint=Config.AZURE_OPENAI_ENDPOINT, 
+            api_key=Config.AZURE_OPENAI_API_KEY, 
+            api_version=Config.AZURE_OPENAI_API_VERSION,
         )
         formatted_user_prompt = user_prompt.format(message=message)
         response = client.chat.completions.create(

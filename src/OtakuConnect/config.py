@@ -16,6 +16,9 @@ class Config:
     DB_NAME = os.environ["DB_NAME"]
     
     # OpenAI Configuration
-    OPENAI_ENDPOINT = os.environ["OPENAI_ENDPOINT"]
-    OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-    OPENAI_API_VERSION = os.environ["OPENAI_API_VERSION"]
+    AZURE_OPENAI_ENDPOINT = os.environ["OPENAI_ENDPOINT"]
+    AZURE_OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+    AZURE_OPENAI_API_VERSION = os.environ["OPENAI_API_VERSION"]
+
+    # Data ingestion settings
+    CLIENT_ID = "f71bb9906fed7c70f57efb433b050528"  

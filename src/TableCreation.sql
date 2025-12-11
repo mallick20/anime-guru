@@ -42,8 +42,10 @@ CREATE TABLE users (
     UserName VARCHAR(100) NOT NULL UNIQUE,
     Email VARCHAR(255) NOT NULL,                    
     Dob DATE,
-    Password VARCHAR(255),                          
-    FavoriteGenres TEXT,                            
+    Password VARCHAR(255),
+    RoleId INT DEFAULT 1,
+    FavoriteGenres TEXT, 
+    Avatar_Path TEXT NOT NULL,                           
     AccountCreatedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     LastLogin TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     AccountStatus VARCHAR(20) DEFAULT 'Active'
@@ -63,8 +65,10 @@ CREATE TABLE Feedback_Table (
     ReviewTitle VARCHAR(255),
     ReviewContent TEXT,
     SpoilerFlag BOOLEAN DEFAULT FALSE,
-    HelpfulCount INT DEFAULT 0
+    HelpfulCount INT DEFAULT 0,
 
+    -- Named constraints for clarity and easier maintenance
+    CONSTRAINT feedback_table_userid_fkey FOREIGN KEY (UserID) REFERENCES users(ID) ON DELETE CASCADE
 );
 
 --Activity Table
@@ -74,30 +78,12 @@ CREATE TABLE activity (
     description		  VARCHAR(255) NOT NULL
 );
 
---Activity Table
+--Entity Table
 CREATE TABLE entity (
     id            SERIAL PRIMARY KEY,                         
     name          VARCHAR(255) NOT NULL,   
     format		  VARCHAR(255) NOT NULL
 );
-
---User Activity History
-CREATE TABLE User_Activity_History (
-    ID SERIAL PRIMARY KEY,
-    UserID INT NOT NULL,
-    EntityID INT,
-    EntityType INT,
-    ActivityType INT,
-    Content TEXT,
-    FOREIGN KEY (UserID) REFERENCES users(ID),
-    FOREIGN KEY (EntityType) REFERENCES Entity(ID),
-    FOREIGN KEY (ActivityType) REFERENCES Activity(ID)
-);
-
-ALTER TABLE user_activity_history
-ADD COLUMN ActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-
 
 -- Discussion threads tables
 CREATE Table discussion_threads(
@@ -106,7 +92,7 @@ CREATE Table discussion_threads(
     title TEXT NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(id),
-    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE discussion_replies(
@@ -115,11 +101,11 @@ CREATE TABLE discussion_replies(
     userid INTEGER NOT NULL,
     reply TEXT,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN key(threadid) REFERENCES discussion_threads(id),
-    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN KEY (threadid) REFERENCES discussion_threads(id) ON DELETE CASCADE,
+    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE
 );
 
---- user activity details
+-- User Activity History
 CREATE TABLE user_activity_history(
     id SERIAL NOT NULL,
     userid integer NOT NULL,
@@ -129,66 +115,7 @@ CREATE TABLE user_activity_history(
     content text,
     activitydate timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(id),
-    CONSTRAINT user_activity_history_userid_fkey FOREIGN key(userid) REFERENCES users(id),
+    CONSTRAINT user_activity_history_userid_fkey FOREIGN key(userid) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT user_activity_history_entitytype_fkey FOREIGN key(entitytype) REFERENCES entity(id),
     CONSTRAINT user_activity_history_activitytype_fkey FOREIGN key(activitytype) REFERENCES activity(id)
 );
-
-
-ALTER TABLE user_activity_history
-DROP CONSTRAINT user_activity_history_userid_fkey;
-
-ALTER TABLE user_activity_history
-ADD CONSTRAINT user_activity_history_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id)
-ON DELETE CASCADE;
-
--- Feedback_Table
-ALTER TABLE feedback_table
-DROP CONSTRAINT feedback_table_userid_fkey;
-
--- User_Activity_History
-ALTER TABLE user_activity_history
-DROP CONSTRAINT user_activity_history_userid_fkey;
-
--- Discussion Threads
-ALTER TABLE discussion_threads
-DROP CONSTRAINT user_discussion_threads_userid_fkey;
-
--- Discussion Replies
-ALTER TABLE discussion_replies
-DROP CONSTRAINT user_discussion_replies_userid_fkey;
-
-
--- Feedback_Table → users
-ALTER TABLE feedback_table
-ADD CONSTRAINT feedback_table_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- User Activity History → users
-ALTER TABLE user_activity_history
-ADD CONSTRAINT user_activity_history_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- Discussion Threads → users
-ALTER TABLE discussion_threads
-ADD CONSTRAINT user_discussion_threads_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- Discussion Replies → users
-ALTER TABLE discussion_replies
-ADD CONSTRAINT user_discussion_replies_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
-ALTER TABLE discussion_replies
-DROP CONSTRAINT user_discussion_replies_threadid_fkey;
-
-ALTER TABLE discussion_replies
-ADD CONSTRAINT user_discussion_replies_threadid_fkey
-FOREIGN KEY (threadid) REFERENCES discussion_threads(id) ON DELETE CASCADE;
-
-
