@@ -21,4 +21,4 @@ class Config:
     AZURE_OPENAI_API_VERSION = os.environ["OPENAI_API_VERSION"]
 
     # Data ingestion settings
-    CLIENT_ID = "f71bb9906fed7c70f57efb433b050528"  
+    CLIENT_ID = os.environ["CLIENT_ID"] 
