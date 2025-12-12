@@ -359,8 +359,6 @@ if __name__ == '__main__':
                             st.session_state.selected_manga = manga_row["title"]
                             st.session_state.operation = "manga_details"
                             st.rerun()
-
-
        
     elif st.session_state.operation == 'anime':
         anime(anime_df)
