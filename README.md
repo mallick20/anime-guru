@@ -8,7 +8,6 @@ The app learns user tastes through **genre preferences**, **ratings**, and **wri
 
 The system handles both new users and new manga/anime seamlessly, enabling a smooth cold-start experience. Everything runs on a modern stack including **Streamlit**, **Azure OpenAI**, and **PostgreSQL**.
 
----
 
 ## ✨ **Features**
 
@@ -28,7 +27,6 @@ The system handles both new users and new manga/anime seamlessly, enabling a smo
 * **Robust Backend**
   PostgreSQL database for users, preferences, feedback, and embeddings.
 
----
 
 ## 🧠 **How It Works**
 
@@ -38,7 +36,6 @@ The system handles both new users and new manga/anime seamlessly, enabling a smo
 4. Items are ranked and recommended based on the highest scores
 5. Recommendations improve as more feedback is collected
 
----
 
 ## 🛠️ **Tech Stack**
 
@@ -48,44 +45,44 @@ The system handles both new users and new manga/anime seamlessly, enabling a smo
 * **PostgreSQL** (Database)
 * **SQLAlchemy / psycopg2** (DB Access)
 
----
 
-## Clone the repo
+## Steps to run
+
+### Clone the repo
 ```bash
 git clone git@github.com:mallick20/anime-guru.git
 cd src/OtakuConnect
 ```
 
 ### Set environment variable
+```bash
+cp .env.example .env
+```
 Set environment variables according to .env.example
+DB, OpenAI and MyAnimeList required environment variables
 
-### Installing the requirements
+### Installing the required packages
 ```bash
 python -m pip install -r requirements.txt`
 ```
----
-
-## Database Setup
 
 ### Setup postgresql server
 
 ### Create the db and tables
-`cd src/OtakuConnect`
+```bash
+TableCreation.sql
+```
 
 ### Data ingestion
 `python data_ingest.py`
 
---- 
-
-## Run the app
+### Run the app
 `streamlit run animeApp.py`
 
----
 ## Collaborators
 - Diksha Phuloria
 - Shruti Elangovan
-- Anurag Mal
+- Anurag Mallick
 
----
 
 ## References
