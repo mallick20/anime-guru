@@ -60,12 +60,13 @@ def get_anime_data(total=2000, limit=100):
     print(f"\n✅ Done! Collected {len(anime_list)} anime entries.")
 
     animedf=pd.DataFrame(anime_list)
-    animedf['genres'] = animedf['genres'].apply(lambda g: ", ".join(d['name'] for d in g) if isinstance(g, list) else None)
+    animedf['genres'] = animedf['genres'].apply(lambda g: ", ".join(d['name'] for d in g) if isinstance(g, list) else "")
     animedf['main_picture']=animedf['main_picture'].apply(lambda x: x['medium'])
     animedf['studios']=animedf['studios'].apply(lambda g: ", ".join(d['name'] for d in g) if isinstance(g, list) else None)
     animedf= animedf.rename(columns={'rating': 'agerating'})
     animedf["start_date"] = animedf["start_date"].apply(fix_date)
     animedf["end_date"] = animedf["end_date"].apply(fix_date)
+    animedf['title'] = animedf['title'].str.replace('"', '')
     
     return animedf
 
@@ -97,11 +98,12 @@ def get_manga_data(total=2000, limit=100):
 
     mangadf = pd.DataFrame(manga_list)
 
-    mangadf["authors"] = mangadf["authors"].apply(lambda a: ", ".join([f"{d['node']['first_name']} {d['node']['last_name']}" for d in a]) if isinstance(a, list) else None)
-    mangadf['genres'] = mangadf['genres'].apply(lambda g: ", ".join(d['name'] for d in g) if isinstance(g, list) else None)
+    mangadf["authors"] = mangadf["authors"].apply(lambda a: ", ".join([f"{d['node']['first_name']} {d['node']['last_name']}" for d in a]) if isinstance(a, list) else "")
+    mangadf['genres'] = mangadf['genres'].apply(lambda g: ", ".join(d['name'] for d in g) if isinstance(g, list) else "")
     mangadf['main_picture']=mangadf['main_picture'].apply(lambda x: x['medium'])
     mangadf["start_date"] = mangadf["start_date"].apply(fix_date)
     mangadf["end_date"] = mangadf["end_date"].apply(fix_date)
+    mangadf['title'] = mangadf['title'].str.replace('"', '')
     
     return mangadf
 
@@ -120,8 +122,12 @@ if __name__ == "__main__":
     #animedf = animedf.drop(columns=["id"])
     #mangadf = mangadf.drop(columns=["id"])
 
-    animedf = get_anime_data(total=2000, limit=100)
-    mangadf = get_manga_data(total=2000, limit=100)
+    animedf = get_anime_data(total=10000, limit=100)
+    mangadf = get_manga_data(total=10000, limit=100)
+
+    # Filter wherever title is empty
+    animedf = animedf.dropna(subset=["title"])
+    mangadf = mangadf.dropna(subset=["title"])
 
     # Filter out rows already in DB
     animedf = animedf[~animedf["title"].isin(existing_animedf["title"])]

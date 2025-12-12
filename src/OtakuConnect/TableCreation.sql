@@ -4,15 +4,15 @@ CREATE TABLE manga (
     id             SERIAL PRIMARY KEY,                         
     title          VARCHAR(255) NOT NULL,                     
     main_picture   TEXT,                                      
-    authors        TEXT NOT NULL,                            
+    authors        TEXT,                            
     mean           DECIMAL(3,2) CHECK (mean >= 0 AND mean <= 10), 
     rank           INT CHECK (rank > 0),                      
     popularity     INT CHECK (popularity >= 0),              
     status         VARCHAR(50) NOT NULL,                     
-    genres         TEXT NOT NULL,                            
+    genres         TEXT,                            
     num_volumes    INT CHECK (num_volumes >= 0),             
     num_chapters   INT CHECK (num_chapters >= 0),            
-    media_type     VARCHAR(50) NOT NULL,                     
+    media_type     VARCHAR(50),                     
     start_date     DATE,                                      
     end_date       DATE,                                      
     synopsis       TEXT                                       
@@ -27,7 +27,7 @@ CREATE TABLE anime (
     rank          INT CHECK (rank > 0),                     
     popularity    INT CHECK (popularity > 0),               
     status        VARCHAR(50) NOT NULL,                     
-    genres        TEXT NOT NULL,                            
+    genres        TEXT,                            
     num_episodes  INT CHECK (num_episodes >= 0),            
     start_date    DATE,                                     
     end_date      DATE,                                     
@@ -43,7 +43,7 @@ CREATE TABLE users (
     Email VARCHAR(255) NOT NULL,                    
     Dob DATE,
     Password VARCHAR(255),
-    RoleId INT DEFAULT 1,
+    RoleId VARCHAR(50) DEFAULT '1',
     FavoriteGenres TEXT, 
     Avatar_Path TEXT NOT NULL,                           
     AccountCreatedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -78,12 +78,24 @@ CREATE TABLE activity (
     description		  VARCHAR(255) NOT NULL
 );
 
+# Activity Table Insert data
+INSERT INTO activity (name, description) VALUES
+('Viewed', 'User viewed an entity'),
+('Rated', 'User rated an entity'),
+('Commented', 'User left a comment'),
+('Recommended', 'User received a recommendation');
+
 --Entity Table
 CREATE TABLE entity (
     id            SERIAL PRIMARY KEY,                         
     name          VARCHAR(255) NOT NULL,   
     format		  VARCHAR(255) NOT NULL
 );
+
+# Insert data into entity table
+INSERT INTO entity (name, format) VALUES
+('Anime', 'Anime entity type'),
+('Manga', 'Manga entity type');
 
 -- Discussion threads tables
 CREATE Table discussion_threads(
@@ -94,6 +106,7 @@ CREATE Table discussion_threads(
     PRIMARY KEY(id),
     CONSTRAINT user_discussion_threads_userid_fkey FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE
 );
+
 
 CREATE TABLE discussion_replies(
     id SERIAL NOT NULL,
