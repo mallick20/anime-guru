@@ -49,8 +49,10 @@ CREATE TABLE users (
     AccountCreatedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     LastLogin TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     AccountStatus VARCHAR(20) DEFAULT 'Active'
-        CHECK (AccountStatus IN ('Active', 'Suspended', 'Deleted'))
+    CONSTRAINT users_accountstatus_check
+    CHECK (AccountStatus IN ('Active', 'Inactive'))
 );
+
 
 -- Feedback Table
 CREATE TABLE Feedback_Table (

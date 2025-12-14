@@ -148,6 +148,11 @@ def login(engine):
             st.error("Invalid email or password.")
             return
 
+        # Check for account status
+        if result._mapping['accountstatus'] == "Inactive":
+            st.error("Your account access has been revoked. Please contact support.")
+            return
+
         try:
             stored_hash = result._mapping['password']
             user_id = result._mapping['id']
