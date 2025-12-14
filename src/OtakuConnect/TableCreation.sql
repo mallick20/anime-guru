@@ -58,7 +58,7 @@ CREATE TABLE users (
 CREATE TABLE Feedback_Table (
     ID SERIAL PRIMARY KEY,  
     Rating INT NOT NULL CHECK (Rating BETWEEN 1 AND 10),  
-    UserID INT NOT NULL REFERENCES users(ID) ON DELETE CASCADE,
+    UserID INT NOT NULL,
     EntityType VARCHAR(20) NOT NULL CHECK (EntityType IN ('Anime', 'Manga')),
     EntityID INT NOT NULL,
     ReviewDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -68,8 +68,6 @@ CREATE TABLE Feedback_Table (
     ReviewContent TEXT,
     SpoilerFlag BOOLEAN DEFAULT FALSE,
     HelpfulCount INT DEFAULT 0,
-
-    -- Named constraints for clarity and easier maintenance
     CONSTRAINT feedback_table_userid_fkey FOREIGN KEY (UserID) REFERENCES users(ID) ON DELETE CASCADE
 );
 
