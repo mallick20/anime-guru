@@ -4,15 +4,15 @@ CREATE TABLE manga (
     id             SERIAL PRIMARY KEY,                         
     title          VARCHAR(255) NOT NULL,                     
     main_picture   TEXT,                                      
-    authors        TEXT NOT NULL,                            
+    authors        TEXT,                            
     mean           DECIMAL(3,2) CHECK (mean >= 0 AND mean <= 10), 
     rank           INT CHECK (rank > 0),                      
     popularity     INT CHECK (popularity >= 0),              
     status         VARCHAR(50) NOT NULL,                     
-    genres         TEXT NOT NULL,                            
+    genres         TEXT,                            
     num_volumes    INT CHECK (num_volumes >= 0),             
     num_chapters   INT CHECK (num_chapters >= 0),            
-    media_type     VARCHAR(50) NOT NULL,                     
+    media_type     VARCHAR(50),                     
     start_date     DATE,                                      
     end_date       DATE,                                      
     synopsis       TEXT                                       
@@ -27,7 +27,7 @@ CREATE TABLE anime (
     rank          INT CHECK (rank > 0),                     
     popularity    INT CHECK (popularity > 0),               
     status        VARCHAR(50) NOT NULL,                     
-    genres        TEXT NOT NULL,                            
+    genres        TEXT,                            
     num_episodes  INT CHECK (num_episodes >= 0),            
     start_date    DATE,                                     
     end_date      DATE,                                     
@@ -42,13 +42,17 @@ CREATE TABLE users (
     UserName VARCHAR(100) NOT NULL UNIQUE,
     Email VARCHAR(255) NOT NULL,                    
     Dob DATE,
-    Password VARCHAR(255),                          
-    FavoriteGenres TEXT,                            
+    Password VARCHAR(255),
+    RoleId VARCHAR(50) DEFAULT '1',
+    FavoriteGenres TEXT, 
+    Avatar_Path TEXT NOT NULL,                           
     AccountCreatedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     LastLogin TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     AccountStatus VARCHAR(20) DEFAULT 'Active'
-        CHECK (AccountStatus IN ('Active', 'Suspended', 'Deleted'))
+    CONSTRAINT users_accountstatus_check
+    CHECK (AccountStatus IN ('Active', 'Inactive'))
 );
+
 
 -- Feedback Table
 CREATE TABLE Feedback_Table (
@@ -63,8 +67,10 @@ CREATE TABLE Feedback_Table (
     ReviewTitle VARCHAR(255),
     ReviewContent TEXT,
     SpoilerFlag BOOLEAN DEFAULT FALSE,
-    HelpfulCount INT DEFAULT 0
+    HelpfulCount INT DEFAULT 0,
 
+    -- Named constraints for clarity and easier maintenance
+    CONSTRAINT feedback_table_userid_fkey FOREIGN KEY (UserID) REFERENCES users(ID) ON DELETE CASCADE
 );
 
 --Activity Table
@@ -74,30 +80,24 @@ CREATE TABLE activity (
     description		  VARCHAR(255) NOT NULL
 );
 
---Activity Table
+# Activity Table Insert data
+INSERT INTO activity (name, description) VALUES
+('Viewed', 'User viewed an entity'),
+('Rated', 'User rated an entity'),
+('Commented', 'User left a comment'),
+('Recommended', 'User received a recommendation');
+
+--Entity Table
 CREATE TABLE entity (
     id            SERIAL PRIMARY KEY,                         
     name          VARCHAR(255) NOT NULL,   
     format		  VARCHAR(255) NOT NULL
 );
 
---User Activity History
-CREATE TABLE User_Activity_History (
-    ID SERIAL PRIMARY KEY,
-    UserID INT NOT NULL,
-    EntityID INT,
-    EntityType INT,
-    ActivityType INT,
-    Content TEXT,
-    FOREIGN KEY (UserID) REFERENCES users(ID),
-    FOREIGN KEY (EntityType) REFERENCES Entity(ID),
-    FOREIGN KEY (ActivityType) REFERENCES Activity(ID)
-);
-
-ALTER TABLE user_activity_history
-ADD COLUMN ActivityDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-
+# Insert data into entity table
+INSERT INTO entity (name, format) VALUES
+('Anime', 'Anime entity type'),
+('Manga', 'Manga entity type');
 
 -- Discussion threads tables
 CREATE Table discussion_threads(
@@ -106,8 +106,9 @@ CREATE Table discussion_threads(
     title TEXT NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(id),
-    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+    CONSTRAINT user_discussion_threads_userid_fkey FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE
 );
+
 
 CREATE TABLE discussion_replies(
     id SERIAL NOT NULL,
@@ -115,11 +116,11 @@ CREATE TABLE discussion_replies(
     userid INTEGER NOT NULL,
     reply TEXT,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN key(threadid) REFERENCES discussion_threads(id),
-    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN key(userid) REFERENCES users(id)
+    CONSTRAINT user_discussion_replies_threadid_fkey FOREIGN KEY (threadid) REFERENCES discussion_threads(id) ON DELETE CASCADE,
+    CONSTRAINT user_discussion_replies_userid_fkey FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE
 );
 
---- user activity details
+-- User Activity History
 CREATE TABLE user_activity_history(
     id SERIAL NOT NULL,
     userid integer NOT NULL,
@@ -129,66 +130,7 @@ CREATE TABLE user_activity_history(
     content text,
     activitydate timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(id),
-    CONSTRAINT user_activity_history_userid_fkey FOREIGN key(userid) REFERENCES users(id),
+    CONSTRAINT user_activity_history_userid_fkey FOREIGN key(userid) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT user_activity_history_entitytype_fkey FOREIGN key(entitytype) REFERENCES entity(id),
     CONSTRAINT user_activity_history_activitytype_fkey FOREIGN key(activitytype) REFERENCES activity(id)
 );
-
-
-ALTER TABLE user_activity_history
-DROP CONSTRAINT user_activity_history_userid_fkey;
-
-ALTER TABLE user_activity_history
-ADD CONSTRAINT user_activity_history_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id)
-ON DELETE CASCADE;
-
--- Feedback_Table
-ALTER TABLE feedback_table
-DROP CONSTRAINT feedback_table_userid_fkey;
-
--- User_Activity_History
-ALTER TABLE user_activity_history
-DROP CONSTRAINT user_activity_history_userid_fkey;
-
--- Discussion Threads
-ALTER TABLE discussion_threads
-DROP CONSTRAINT user_discussion_threads_userid_fkey;
-
--- Discussion Replies
-ALTER TABLE discussion_replies
-DROP CONSTRAINT user_discussion_replies_userid_fkey;
-
-
--- Feedback_Table → users
-ALTER TABLE feedback_table
-ADD CONSTRAINT feedback_table_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- User Activity History → users
-ALTER TABLE user_activity_history
-ADD CONSTRAINT user_activity_history_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- Discussion Threads → users
-ALTER TABLE discussion_threads
-ADD CONSTRAINT user_discussion_threads_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
--- Discussion Replies → users
-ALTER TABLE discussion_replies
-ADD CONSTRAINT user_discussion_replies_userid_fkey
-FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE;
-
-
-ALTER TABLE discussion_replies
-DROP CONSTRAINT user_discussion_replies_threadid_fkey;
-
-ALTER TABLE discussion_replies
-ADD CONSTRAINT user_discussion_replies_threadid_fkey
-FOREIGN KEY (threadid) REFERENCES discussion_threads(id) ON DELETE CASCADE;
-
-

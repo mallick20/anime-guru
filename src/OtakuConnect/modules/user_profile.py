@@ -50,20 +50,26 @@ def profile(user_df, engine):
 
         st.write("### Change Avatar")
 
-        # 🧩 Fixed avatar selection
+        # Fixed avatar selection
         selected_avatar = st.radio(
             "Select Avatar",
-            avatar_list,  # all available avatars
+            options=avatar_list,  # all available avatars
             index=avatar_list.index(current_avatar) if current_avatar in avatar_list else 0,
-            format_func=lambda x: f"Avatar {image_values.get(x, '?')}",
+            format_func=lambda x: f"Avatar {avatar_list.index(x) + 1}",
             label_visibility="collapsed"
         )
 
-        # 🖼️ Display avatars in grid with preview
-        cols = st.columns(6)
-        for idx, avatar in enumerate(avatar_list):
-            with cols[idx % 6]:
-                st.image(avatar, width=100, caption=f"Avatar {image_values.get(avatar, '?')}")
+        # Display avatars in grid with preview
+        if not avatar_list:
+            st.info("No avatars found.")
+        else:
+            columns_count = min(6, len(avatar_list))
+            for i in range(0, len(avatar_list), columns_count):
+                row_avatars = avatar_list[i : i + columns_count]
+                cols = st.columns(len(row_avatars))
+                for col, avatar in zip(cols, row_avatars):
+                    with col:
+                        st.image(avatar, width=100, caption=f"Avatar {avatar_list.index(avatar) + 1}")
 
         submit_edit = st.form_submit_button("💾 Update Profile", use_container_width=True)
 

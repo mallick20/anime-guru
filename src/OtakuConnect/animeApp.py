@@ -12,8 +12,12 @@ from modules.recommender_page import recommender
 from modules.auth_page import signup, login, reset_password, forgot_password
 from modules.user_log import log_user_activity
 from modules.user_profile import profile
-from db_utils import get_connection, load_table_as_df 
 from modules.admin_page import admin_panel
+from config import Config
+
+from db_utils import get_connection, load_table_as_df
+
+
 
 
 def create_carousel_html(items, title_field="title", img_field="main_picture", badge_field=None, badge_prefix="⭐"):
@@ -103,7 +107,11 @@ if __name__ == '__main__':
 
 
     #opening connection to dp
-    engine = get_connection('postgres', 'Rutgers123', 'localhost', 5401, 'OtakuConnectDB')
+    engine = get_connection(Config.DB_USERNAME,
+                            Config.DB_PASSWORD,
+                            Config.DB_HOST,
+                            Config.DB_PORT,
+                            Config.DB_NAME)
 
     #anime data
     anime_df = load_table_as_df(engine, 'anime')
@@ -128,7 +136,7 @@ if __name__ == '__main__':
 
         if not st.session_state.logged_in:
             image = Image.open("images/anime_background.jpeg")
-            st.image(image, use_column_width=True)
+            st.image(image, use_container_width=True)
             st.title(':red[Welcome to OtakuConnect] 🚀')
             if st.button("Home 🏠", type='primary', use_container_width=True):
                 st.session_state.operation = "home"
@@ -351,8 +359,6 @@ if __name__ == '__main__':
                             st.session_state.selected_manga = manga_row["title"]
                             st.session_state.operation = "manga_details"
                             st.rerun()
-
-
        
     elif st.session_state.operation == 'anime':
         anime(anime_df)

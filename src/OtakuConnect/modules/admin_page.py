@@ -30,6 +30,16 @@ def admin_panel(engine):
         engine
     )
 
+    # Filter users based on role_id the role_id should be less than the current user's role_id
+    users_df = users_df[users_df["roleid"] <= st.session_state.role_id]
+    users_df = users_df.reset_index(drop=True)
+
+    # Remove that particular user from the list if they are the same as the admin/ superuser
+    users_df = users_df[users_df["id"] != st.session_state.user_id]
+    users_df = users_df.reset_index(drop=True)
+
+    # Display selected page based on roleid
+
     # -------------------
     if page == "Update Role":
         st.subheader("👤 Update User Role")
@@ -38,13 +48,23 @@ def admin_panel(engine):
             user_row = users_df[users_df["username"] == selected_user].iloc[0]
             st.write(f"**Current Role:** {user_row.roleid}")
 
-            new_role = st.selectbox("Change Role:", ["User", "Admin", "Superuser"], index=int(user_row.roleid) - 1)
-            if st.button("Update Role", key="update_role_btn"):
-                roleid = {"User": '1', "Admin": '2', "Superuser": '3'}[new_role]
-                with engine.begin() as conn:
-                    conn.execute(text("UPDATE users SET roleid = :r WHERE username = :u"), {"r": roleid, "u": selected_user})
-                st.success(f"✅ Role updated to {new_role} for {selected_user}")
-                st.rerun()
+            if st.session_state.role_id == '3':  # Superuser only
+                new_role = st.selectbox("Change Role:", ["User", "Admin", "Superuser"], index=int(user_row.roleid) - 1)
+                if st.button("Update Role", key="update_role_btn"):
+                    roleid = {"User": '1', "Admin": '2', "Superuser": '3'}[new_role]
+                    with engine.begin() as conn:
+                        conn.execute(text("UPDATE users SET roleid = :r WHERE username = :u"), {"r": roleid, "u": selected_user})
+                    st.success(f"✅ Role updated to {new_role} for {selected_user}")
+                    st.rerun()
+            else:  # Admin only
+                new_role = st.selectbox("Change Role:", ["User", "Admin"], index=int(user_row.roleid) - 1)
+                if st.button("Update Role", key="update_role_btn"):
+                    roleid = {"User": '1', "Admin": '2'}[new_role]
+                    with engine.begin() as conn:
+                        conn.execute(text("UPDATE users SET roleid = :r WHERE username = :u"), {"r": roleid, "u": selected_user})
+                    st.success(f"✅ Role updated to {new_role} for {selected_user}")
+                    st.rerun()
+
 
     # -------------------
     elif page == "Revoke/Restore User":
