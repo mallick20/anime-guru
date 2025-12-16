@@ -303,7 +303,7 @@ def shuffle_recommender(anime_df, manga_df, engine):
                         user_genres = result[1]
     
     # Recommendation settings
-    with st.expander("🎯 Customize Your Shuffle", expanded=True):
+    with st.expander("🎯 Customize Your Shuffle", expanded=False):
         selected_media_type = st.radio(
             "What do you want to discover?",
             ["Anime", "Manga"],
